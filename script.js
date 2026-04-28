@@ -1,21 +1,39 @@
-const API = "http://localhost:3000";
+// LOAD DATA
+function getUsers() {
+    return JSON.parse(localStorage.getItem("users")) || [];
+}
 
-// LOGIN
-async function login() {
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+function getItems() {
+    return JSON.parse(localStorage.getItem("items")) || [];
+}
 
-    const res = await fetch(API + "/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-    });
+function saveUsers(users) {
+    localStorage.setItem("users", JSON.stringify(users));
+}
 
-    if (res.ok) {
-        window.location.href = "home.html";
-    } else {
-        alert("Login failed");
+function saveItems(items) {
+    localStorage.setItem("items", JSON.stringify(items));
+}
+
+// LOGIN / SIGNUP
+function login() {
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
+
+    let users = getUsers();
+    let user = users.find(u => u.username === username);
+
+    if (!user) {
+        users.push({ username, password });
+        saveUsers(users);
+        alert("Account created!");
+    } else if (user.password !== password) {
+        alert("Wrong password!");
+        return;
     }
+
+    localStorage.setItem("currentUser", username);
+    window.location.href = "home.html";
 }
 
 // NAVIGATION
@@ -28,12 +46,15 @@ function goFound() {
 }
 
 function logout() {
+    localStorage.removeItem("currentUser");
     window.location.href = "index.html";
 }
 
 // POST FOUND ITEM
-async function postItem() {
-    const item = {
+function postItem() {
+    let items = getItems();
+
+    let item = {
         id: Date.now(),
         type: document.getElementById("type").value,
         color: document.getElementById("color").value,
@@ -42,30 +63,25 @@ async function postItem() {
         verification: document.getElementById("verification").value
     };
 
-    await fetch(API + "/found", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item)
-    });
+    items.push(item);
+    saveItems(items);
 
     alert("Item posted!");
 }
 
-// SEARCH ITEMS
-async function searchItems() {
-    const query = document.getElementById("search").value.toLowerCase();
+// SEARCH
+function searchItems() {
+    let query = document.getElementById("search").value.toLowerCase();
+    let items = getItems();
 
-    const res = await fetch(API + "/items");
-    const items = await res.json();
-
-    const filtered = items.filter(i =>
+    let results = items.filter(i =>
         i.color.toLowerCase().includes(query) ||
         i.model.toLowerCase().includes(query)
     );
 
     let html = "";
 
-    filtered.forEach(i => {
+    results.forEach(i => {
         html += `
         <div class="card">
             <p>${i.type} - ${i.color} - ${i.model}</p>
@@ -78,20 +94,15 @@ async function searchItems() {
 }
 
 // VERIFY
-async function verify(id) {
-    const answer = prompt("Enter verification answer:");
+function verify(id) {
+    let answer = prompt("Enter verification answer:");
+    let items = getItems();
 
-    const res = await fetch(API + "/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, answer })
-    });
+    let item = items.find(i => i.id === id);
 
-    const data = await res.json();
-
-    if (data.success) {
+    if (item && item.verification === answer) {
         alert("Item claimed successfully!");
     } else {
-        alert("Wrong verification!");
+        alert("Wrong answer!");
     }
 }
